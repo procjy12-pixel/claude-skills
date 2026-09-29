@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>카드뉴스</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #F2F4F6; color: #191F28;
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 12px;
+    padding: 16px 28px; background: #fff; border-bottom: 1px solid #E5E8EB; }
+  header h1 { font-size: 20px; margin: 0; flex: 1; }
+  button { font: inherit; font-size: 15px; font-weight: 700; border: 0; border-radius: 10px; padding: 10px 16px;
+    cursor: pointer; background: #E8F3FF; color: #1B64DA; }
+  button.main { background: #3182F6; color: #fff; }
+  main { padding: 28px; }
+  .cards { display: flex; flex-wrap: wrap; gap: 20px; }
+  .card { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .card canvas { width: 324px; height: 405px; border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.08); background: #fff; }
+  .cap { margin-top: 28px; background: #fff; border-radius: 14px; padding: 22px 24px; max-width: 900px; }
+  .cap pre { white-space: pre-wrap; font: inherit; font-size: 16px; line-height: 1.7; margin: 10px 0 14px; }
+  .note { color: #6B7684; font-size: 14px; margin: 8px 0 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="제목칸">카드뉴스</h1>
+  <button class="main" id="전부저장">PNG로 전부 저장</button>
+</header>
+<main>
+  <p class="note">한 장씩 저장하려면 그 장 아래 버튼을 누르세요. 전부 저장할 때 브라우저가 "여러 파일 다운로드"를 물으면 허용을 누르세요.</p>
+  <div class="cards" id="카드들"></div>
+  <div class="cap">
+    <b>캡션</b>
+    <pre id="캡션칸"></pre>
+    <button id="캡션복사">캡션 복사</button>
+  </div>
+</main>
+
+<script>
+/* ================= 여기만 바꾼다 =================
+   색은 회사 색 하나. 종류는 표지 · 본문 · 마무리.
+   제목은 15자 안팎, 본문은 한 줄 20자 안팎으로 2~4줄. 그림은 이모지 하나(없어도 됨). */
+const 설정 = {
+  주제: "예시 카드뉴스",
+  회사: "우리 회사",
+  색: "#3182F6"
+};
+const 카드 = [
+  { 종류: "표지", 제목: "여기에 표지 제목", 부제: "한 줄 부제", 그림: "📌" },
+  { 종류: "본문", 제목: "첫 번째 이야기", 본문: "본문 첫 줄\n본문 둘째 줄", 그림: "💡" },
+  { 종류: "마무리", 제목: "마무리 한 줄", 본문: "저장해 두고\n필요할 때 꺼내 보세요", 그림: "🙌" }
+];
+const 캡션 = "캡션 첫 줄\n\n#해시태그 #예시";
+/* ================================================ */
+
+const W = 1080, H = 1350, PAD = 96;
+const FONT = '"Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif';
+
+function 섞기(hex, 비율) {            // 색을 흰색 쪽으로 옅게
+  const n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const f = c => Math.round(c + (255 - c) * 비율);
+  return `rgb(${f(r)},${f(g)},${f(b)})`;
+}
+
+function 줄나누기(ctx, 글, 너비) {     // 띄어쓰기 기준으로 줄을 나누고, 긴 낱말은 글자로 자른다
+  const 결과 = [];
+  for (const 문단 of String(글 || "").split("\n")) {
+    let 줄 = "";
+    for (const 낱말 of 문단.split(" ")) {
+      const 시험 = 줄 ? 줄 + " " + 낱말 : 낱말;
+      if (ctx.measureText(시험).width <= 너비) { 줄 = 시험; continue; }
+      if (줄) 결과.push(줄);
+      if (ctx.measureText(낱말).width <= 너비) { 줄 = 낱말; continue; }
+      줄 = "";
+      for (const 글자 of 낱말) {
+        if (ctx.measureText(줄 + 글자).width > 너비) { 결과.push(줄); 줄 = 글자; } else 줄 += 글자;
+      }
+    }
+    결과.push(줄);
+  }
+  return 결과;
+}
+
+function 쓰기(ctx, 글, x, y, 크기, 굵기, 색, 너비, 줄간격 = 1.3, 최대줄 = 0) {
+  ctx.font = `${굵기} ${크기}px ${FONT}`;
+  ctx.fillStyle = 색;
+  let 줄들 = 줄나누기(ctx, 글, 너비);
+  if (최대줄 && 줄들.length > 최대줄) { 줄들 = 줄들.slice(0, 최대줄); 줄들[최대줄 - 1] += "…"; }
+  줄들.forEach((줄, i) => ctx.fillText(줄, x, y + i * 크기 * 줄간격));
+  return y + 줄들.length * 크기 * 줄간격;
+}
+
+function 그리기(canvas, c, i, 전체) {
+  const ctx = canvas.getContext("2d");
+  const 색 = 설정.색 || "#3182F6";
+  ctx.textBaseline = "top";
+  const 표지 = c.종류 === "표지", 마무리 = c.종류 === "마무리";
+  ctx.fillStyle = 표지 ? 색 : 마무리 ? 섞기(색, 0.9) : "#FFFFFF";
+  ctx.fillRect(0, 0, W, H);
+  const 글색 = 표지 ? "#FFFFFF" : "#191F28";
+  const 흐린색 = 표지 ? "rgba(255,255,255,.72)" : "#6B7684";
+
+  // 위 · 회사 이름과 쪽수
+  쓰기(ctx, 설정.회사, PAD, PAD, 34, 700, 흐린색, W - PAD * 2);
+  ctx.font = `700 34px ${FONT}`; ctx.textAlign = "right";
+  ctx.fillStyle = 흐린색; ctx.fillText(`${i + 1} / ${전체}`, W - PAD, PAD);
+  ctx.textAlign = "left";
+
+  if (표지) {
+    let y = 쓰기(ctx, c.제목, PAD, 360, 104, 800, 글색, W - PAD * 2, 1.28, 4);
+    if (c.부제) 쓰기(ctx, c.부제, PAD, y + 40, 46, 500, "rgba(255,255,255,.85)", W - PAD * 2, 1.45, 3);
+    if (c.그림) { ctx.font = `220px ${FONT}`; ctx.textAlign = "right"; ctx.fillText(c.그림, W - PAD + 10, H - PAD - 250); ctx.textAlign = "left"; }
+    ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fillRect(PAD, H - PAD - 12, 120, 12);
+    return;
+  }
+  // 본문 · 마무리
+  if (!마무리) 쓰기(ctx, String(i).padStart(2, "0"), PAD, 250, 60, 800, 색, 300);
+  let y = 쓰기(ctx, c.제목, PAD, 마무리 ? 330 : 350, 80, 800, 글색, W - PAD * 2, 1.3, 3);
+  ctx.fillStyle = 색; ctx.fillRect(PAD, y + 36, 96, 10);
+  쓰기(ctx, c.본문, PAD, y + 96, 48, 500, "#333D4B", W - PAD * 2, 1.6, 7);
+  if (c.그림) { ctx.font = `150px ${FONT}`; ctx.textAlign = "right"; ctx.fillText(c.그림, W - PAD + 6, H - PAD - 170); ctx.textAlign = "left"; }
+  if (마무리) { ctx.fillStyle = 색; ctx.fillRect(PAD, H - PAD - 12, 120, 12); }
+}
+
+function 저장(canvas, 이름) {
+  return new Promise(ok => canvas.toBlob(b => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(b); a.download = 이름; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); ok(); }, 300);
+  }, "image/png"));
+}
+
+const 판 = document.getElementById("카드들");
+document.getElementById("제목칸").textContent = 설정.주제;
+document.title = 설정.주제;
+const 캔버스들 = 카드.map((c, i) => {
+  const 칸 = document.createElement("div"); 칸.className = "card";
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const 버튼 = document.createElement("button"); 버튼.textContent = `${i + 1}장 저장`;
+  버튼.onclick = () => 저장(cv, `카드뉴스_${String(i + 1).padStart(2, "0")}.png`);
+  칸.append(cv, 버튼); 판.append(칸);
+  return cv;
+});
+function 전부그리기() { 카드.forEach((c, i) => 그리기(캔버스들[i], c, i, 카드.length)); }
+(document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(전부그리기);
+전부그리기();
+document.getElementById("전부저장").onclick = async () => {
+  for (let i = 0; i < 캔버스들.length; i++) await 저장(캔버스들[i], `카드뉴스_${String(i + 1).padStart(2, "0")}.png`);
+};
+document.getElementById("캡션칸").textContent = 캡션;
+document.getElementById("캡션복사").onclick = () => {
+  const t = document.createElement("textarea"); t.value = 캡션; document.body.appendChild(t); t.select();
+  document.execCommand("copy"); t.remove();
+  document.getElementById("캡션복사").textContent = "복사했습니다";
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>블로그 원고</title>
+<style>
+  body { margin: 0; background: #F2F4F6; color: #191F28;
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "맑은 고딕", sans-serif; }
+  .bar { position: sticky; top: 0; display: flex; align-items: center; gap: 14px; padding: 14px 24px;
+    background: #fff; border-bottom: 1px solid #E5E8EB; }
+  .bar b { font-size: 18px; }
+  .bar span { color: #6B7684; font-size: 14px; }
+  button { font: inherit; font-size: 15px; font-weight: 700; border: 0; border-radius: 10px; padding: 10px 16px;
+    cursor: pointer; background: #3182F6; color: #fff; }
+  article { max-width: 760px; margin: 28px auto 60px; background: #fff; padding: 48px 56px; border-radius: 16px;
+    font-size: 17px; line-height: 1.85; word-break: keep-all; }
+  article h1 { font-size: 28px; line-height: 1.4; margin: 0 0 24px; }
+  article h2 { font-size: 21px; margin: 40px 0 12px; }
+  article .photo { border: 2px dashed #C5CBD3; border-radius: 12px; padding: 22px; margin: 18px 0; color: #6B7684;
+    text-align: center; background: #F9FAFB; font-size: 15px; }
+  article .tags { color: #3182F6; }
+  .titles { max-width: 760px; margin: 20px auto 0; color: #4E5968; font-size: 15px; }
+</style>
+</head>
+<body>
+<div class="bar"><b>블로그 원고</b><button id="복사">본문 복사</button>
+  <span>네이버 블로그 글쓰기 화면에 붙여 넣으세요. 회색 칸은 사진 자리입니다.</span></div>
+<div class="titles" id="제목후보"></div>
+<article id="원고">
+<!-- ============ 여기만 바꾼다 ============ -->
+<h1>제목</h1>
+<p>도입 문단</p>
+<h2>소제목</h2>
+<div class="photo">사진 · 무엇을 찍은 사진</div>
+<p>본문</p>
+<p class="tags">#태그</p>
+<!-- ====================================== -->
+</article>
+<script>
+// 제목 후보 (여기만 바꾼다)
+const 제목후보 = ["제목 후보 1", "제목 후보 2", "제목 후보 3"];
+document.getElementById("제목후보").textContent = "제목 후보 · " + 제목후보.join("  /  ");
+document.getElementById("복사").onclick = () => {
+  const 범위 = document.createRange(); 범위.selectNodeContents(document.getElementById("원고"));
+  const 선택 = window.getSelection(); 선택.removeAllRanges(); 선택.addRange(범위);
+  document.execCommand("copy"); 선택.removeAllRanges();
+  document.getElementById("복사").textContent = "복사했습니다";
+};
+</script>
+</body>
+</html>
