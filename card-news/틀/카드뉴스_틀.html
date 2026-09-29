@@ -41,7 +41,8 @@
 <script>
 /* ================= 여기만 바꾼다 =================
    색은 회사 색 하나. 종류는 표지 · 본문 · 마무리.
-   제목은 15자 안팎, 본문은 한 줄 20자 안팎으로 2~4줄. 그림은 이모지 하나(없어도 됨). */
+   제목은 15자 안팎, 본문은 한 줄 20자 안팎으로 2~4줄. 그림은 이모지 하나(없어도 됨).
+   사진을 넣으려면 그 장에 사진: "data:image/jpeg;base64,..." 와 사진출처: "사진가 이름 / Pexels" 를 적는다. */
 const 설정 = {
   주제: "예시 카드뉴스",
   회사: "우리 회사",
@@ -92,6 +93,12 @@ function 쓰기(ctx, 글, x, y, 크기, 굵기, 색, 너비, 줄간격 = 1.3, �
   return y + 줄들.length * 크기 * 줄간격;
 }
 
+function 사진깔기(ctx, img, x, y, w, h) {      // 칸을 꽉 채우게 가운데 기준으로 잘라 그린다
+  const r = Math.max(w / img.width, h / img.height);
+  const sw = w / r, sh = h / r;
+  ctx.drawImage(img, (img.width - sw) / 2, (img.height - sh) / 2, sw, sh, x, y, w, h);
+}
+
 function 그리기(canvas, c, i, 전체) {
   const ctx = canvas.getContext("2d");
   const 색 = 설정.색 || "#3182F6";
@@ -108,6 +115,20 @@ function 그리기(canvas, c, i, 전체) {
   ctx.fillStyle = 흐린색; ctx.fillText(`${i + 1} / ${전체}`, W - PAD, PAD);
   ctx.textAlign = "left";
 
+  if (표지 && c.사진그림) {                       // 사진 표지: 사진 위에 어두운 막을 깔고 흰 글씨
+    사진깔기(ctx, c.사진그림, 0, 0, W, H);
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, "rgba(0,0,0,.25)"); g.addColorStop(1, "rgba(0,0,0,.72)");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    쓰기(ctx, 설정.회사, PAD, PAD, 34, 700, "rgba(255,255,255,.8)", W - PAD * 2);
+    ctx.font = `700 34px ${FONT}`; ctx.textAlign = "right"; ctx.fillStyle = "rgba(255,255,255,.8)";
+    ctx.fillText(`${i + 1} / ${전체}`, W - PAD, PAD); ctx.textAlign = "left";
+    let y = 쓰기(ctx, c.제목, PAD, H - 620, 104, 800, "#FFFFFF", W - PAD * 2, 1.28, 3);
+    if (c.부제) 쓰기(ctx, c.부제, PAD, y + 36, 46, 500, "rgba(255,255,255,.88)", W - PAD * 2, 1.45, 2);
+    ctx.fillStyle = 색; ctx.fillRect(PAD, H - PAD - 12, 120, 12);
+    if (c.사진출처) 쓰기(ctx, "사진 · " + c.사진출처, W - PAD - 420, H - PAD - 24, 24, 500, "rgba(255,255,255,.7)", 420);
+    return;
+  }
   if (표지) {
     let y = 쓰기(ctx, c.제목, PAD, 360, 104, 800, 글색, W - PAD * 2, 1.28, 4);
     if (c.부제) 쓰기(ctx, c.부제, PAD, y + 40, 46, 500, "rgba(255,255,255,.85)", W - PAD * 2, 1.45, 3);
@@ -115,7 +136,18 @@ function 그리기(canvas, c, i, 전체) {
     ctx.fillStyle = "rgba(255,255,255,.9)"; ctx.fillRect(PAD, H - PAD - 12, 120, 12);
     return;
   }
-  // 본문 · 마무리
+  // 본문 · 마무리 (사진이 있으면 위쪽 절반에 사진, 아래에 글)
+  if (c.사진그림) {
+    사진깔기(ctx, c.사진그림, 0, 0, W, 600);
+    if (c.사진출처) { ctx.fillStyle = "rgba(0,0,0,.35)"; ctx.fillRect(0, 548, W, 52);
+      쓰기(ctx, "사진 · " + c.사진출처, PAD, 560, 24, 500, "rgba(255,255,255,.85)", W - PAD * 2); }
+    ctx.font = `700 34px ${FONT}`; ctx.textAlign = "right"; ctx.fillStyle = "rgba(255,255,255,.9)";
+    ctx.fillText(`${i + 1} / ${전체}`, W - PAD, PAD); ctx.textAlign = "left";
+    if (!마무리) 쓰기(ctx, String(i).padStart(2, "0"), PAD, 660, 52, 800, 색, 300);
+    let y2 = 쓰기(ctx, c.제목, PAD, 마무리 ? 660 : 730, 72, 800, 글색, W - PAD * 2, 1.3, 2);
+    쓰기(ctx, c.본문, PAD, y2 + 40, 44, 500, "#333D4B", W - PAD * 2, 1.55, 4);
+    return;
+  }
   if (!마무리) 쓰기(ctx, String(i).padStart(2, "0"), PAD, 250, 60, 800, 색, 300);
   let y = 쓰기(ctx, c.제목, PAD, 마무리 ? 330 : 350, 80, 800, 글색, W - PAD * 2, 1.3, 3);
   ctx.fillStyle = 색; ctx.fillRect(PAD, y + 36, 96, 10);
@@ -144,7 +176,9 @@ const 캔버스들 = 카드.map((c, i) => {
   return cv;
 });
 function 전부그리기() { 카드.forEach((c, i) => 그리기(캔버스들[i], c, i, 카드.length)); }
-(document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(전부그리기);
+const 사진불러오기 = 카드.map(c => c.사진 ? new Promise(ok => { const im = new Image();
+  im.onload = () => { c.사진그림 = im; ok(); }; im.onerror = () => ok(); im.src = c.사진; }) : Promise.resolve());
+Promise.all([...사진불러오기, document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()]).then(전부그리기);
 전부그리기();
 document.getElementById("전부저장").onclick = async () => {
   for (let i = 0; i < 캔버스들.length; i++) await 저장(캔버스들[i], `카드뉴스_${String(i + 1).padStart(2, "0")}.png`);
